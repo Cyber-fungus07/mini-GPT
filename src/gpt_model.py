@@ -34,4 +34,3 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
 
         return logits
-
