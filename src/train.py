@@ -2,12 +2,12 @@ import time
 
 import torch
 
-from generate import (
-    generate_text_simple,
-    text_to_token_ids,
-    token_ids_to_text
-)
+from config import GPT_CONFIG
+from dataloader import create_dataloader
+from generate import (generate_text_simple, text_to_token_ids,token_ids_to_text)
+from gpt_model import GPTModel
 from loss import GPTLoss
+from tokenizer import GPTTokenizer
 
 
 class Trainer:
@@ -28,7 +28,6 @@ class Trainer:
         self.global_step = 0
 
 
-
     def calc_loss_batch(self, input_batch, target_batch):
         input_batch = input_batch.to(self.device)
         target_batch = target_batch.to(self.device)
@@ -36,8 +35,6 @@ class Trainer:
         logits = self.model(input_batch)
 
         return self.loss_fn(logits, target_batch)
-
-
 
 
     def calc_loss_loader(self, data_loader, num_batches=None):
@@ -105,13 +102,7 @@ class Trainer:
 
         self.model.train()
 
-    def train(
-        self,
-        num_epochs,
-        eval_freq,
-        eval_iter,
-        start_context
-    ):
+    def train(self,num_epochs,eval_freq,eval_iter,start_context):
         tokens_seen = 0
 
         for epoch in range(num_epochs):
@@ -150,3 +141,38 @@ class Trainer:
         return self.train_losses, self.val_losses, self.tokens_seen
 
 
+def main():
+    device = torch.device(
+        "mps" if torch.backends.mps.is_available() else "cpu"
+    )
+
+    tokenizer = GPTTokenizer()
+
+    with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
+        text = f.read()
+
+    train_loader = create_dataloader(text,tokenizer=tokenizer,batch_size=4,max_length=256,stride=128)
+    val_loader = create_dataloader(text,tokenizer=tokenizer,batch_size=4,max_length=256,stride=128,shuffle=False)
+    model = GPTModel(GPT_CONFIG).to(device)
+
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=0.0004,
+        weight_decay=0.1
+    )
+
+    trainer = Trainer(model=model,train_loader=train_loader,val_loader=val_loader,
+        optimizer=optimizer,device=device,tokenizer=tokenizer)
+
+    start_time = time.time()
+
+    trainer.train(num_epochs=1,eval_freq=5,eval_iter=2,
+        start_context="Every effort moves you"
+    )
+
+    execution_time = (time.time() - start_time) / 60
+    print(f"Training completed in {execution_time:.2f} minutes.")
+
+
+if __name__ == "__main__":
+    main()
