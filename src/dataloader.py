@@ -1,9 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from tokenizer import GPTTokenizer
-
-
 class GPTDataset(Dataset):
 
     def __init__(self, text, tokenizer, max_length, stride):
@@ -35,6 +32,7 @@ class GPTDataset(Dataset):
 
 def create_dataloader(
     text,
+    tokenizer,
     batch_size=4,
     max_length=256,
     stride=128,
@@ -42,9 +40,6 @@ def create_dataloader(
     drop_last=True,
     num_workers=0
 ):
-
-    tokenizer = GPTTokenizer()
-
     dataset = GPTDataset(
         text=text,
         tokenizer=tokenizer,
