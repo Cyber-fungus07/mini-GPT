@@ -4,7 +4,7 @@ import torch
 
 from config import GPT_CONFIG
 from dataloader import create_dataloader
-from generate import (generate_text_simple, text_to_token_ids,token_ids_to_text)
+from generate import (generate, text_to_token_ids,token_ids_to_text)
 from gpt_model import GPTModel
 from loss import GPTLoss
 from tokenizer import GPTTokenizer
@@ -86,11 +86,13 @@ class Trainer:
         ).to(self.device)
 
         with torch.no_grad():
-            token_ids = generate_text_simple(
+            token_ids = generate(
                 self.model,
                 encoded,
-                max_new_tokens=50,
-                context_size=context_size
+                max_new_tokens=25,
+                context_size=context_size,
+                temperature=1.4,
+                top_k=25
             )
 
         decoded_text = token_ids_to_text(
@@ -148,7 +150,7 @@ def main():
 
     tokenizer = GPTTokenizer()
 
-    with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
+    with open("../data/the-verdict.txt", "r", encoding="utf-8") as f:
         text = f.read()
 
     train_loader = create_dataloader(text,tokenizer=tokenizer,batch_size=4,max_length=256,stride=128)
