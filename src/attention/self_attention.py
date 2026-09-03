@@ -14,7 +14,7 @@ class SelfAttention(nn.Module):
         keys = self.W_k(x)
         values = self.W_v(x)
 
-        attn_scores = queries @ keys.T
+        attn_scores = queries @ keys.transpose(-2, -1)
 
         attn_weight = torch.softmax(
             attn_scores / keys.shape[-1] ** 0.5,

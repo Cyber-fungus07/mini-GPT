@@ -8,8 +8,11 @@ def text_to_token_ids(text, tokenizer):
 
 
 def token_ids_to_text(token_ids, tokenizer):
-    flat = token_ids.squeeze(0)
-    return tokenizer.decode(flat.tolist())
+    if token_ids.dim() == 1:
+        return tokenizer.decode(token_ids.tolist())
+    if token_ids.shape[0] == 1:
+        return tokenizer.decode(token_ids.squeeze(0).tolist())
+    return [tokenizer.decode(row.tolist()) for row in token_ids]
 
 
 def generate(model, idx, max_new_tokens, context_size, temperature=1.0, top_k=None, eos_id=None):
@@ -26,12 +29,13 @@ def generate(model, idx, max_new_tokens, context_size, temperature=1.0, top_k=No
 
         # Top-k filtering
         if top_k is not None:
+            top_k = min(top_k, logits.shape[-1])
             top_logits, _ = torch.topk(logits, top_k)
-            min_val = top_logits[:, -1]
+            min_val = top_logits[:, -1].unsqueeze(-1)
 
             logits = torch.where(
                 logits < min_val,
-                torch.tensor(float("-inf")).to(logits.device),
+                torch.tensor(float("-inf"), device=logits.device, dtype=logits.dtype),
                 logits
             )
 
@@ -46,7 +50,8 @@ def generate(model, idx, max_new_tokens, context_size, temperature=1.0, top_k=No
             idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
         # Stop if EOS token is generated
-        if eos_id is not None and idx_next.item() == eos_id:
+        if eos_id is not None and (idx_next == eos_id).all():
+            idx = torch.cat((idx, idx_next), dim=1)
             break
 
         # Add predicted token to sequence

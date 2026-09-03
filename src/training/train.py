@@ -142,19 +142,24 @@ class Trainer:
 
 
 def main():
-    device = torch.device(
-        "mps" if torch.backends.mps.is_available() else "cpu"
-    )
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    print(f"Using device: {device}")
 
     tokenizer = GPTTokenizer()
 
     with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
         text = f.read()
 
-    # Split text into train (90%) and val (10%)
-    split_idx = int(len(text) * 0.9)
-    train_text = text[:split_idx]
-    val_text = text[split_idx:]
+    # Split on token boundary (not raw chars) so we never cut a word/token in half
+    all_ids = tokenizer.encode(text)
+    split_idx = int(len(all_ids) * 0.9)
+    train_text = tokenizer.decode(all_ids[:split_idx])
+    val_text = tokenizer.decode(all_ids[split_idx:])
 
     train_loader = create_dataloader(
         train_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128, drop_last=True

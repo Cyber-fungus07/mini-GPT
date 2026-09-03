@@ -9,9 +9,6 @@ __pycache__/
 .ipynb_checkpoints/
 *.ipynb
 
-# Tests
-tests/
-
 # Environment variables
 .env
 .idea/
@@ -29,6 +26,5 @@ data/processed/
 # macOS
 .DS_Store
 
-requirements.txt
-
 .jbeval
+tests
