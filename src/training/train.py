@@ -157,10 +157,10 @@ def main():
     val_text = text[split_idx:]
 
     train_loader = create_dataloader(
-        train_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128
+        train_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128, drop_last=True
     )
     val_loader = create_dataloader(
-        val_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128, shuffle=False
+        val_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128, shuffle=False, drop_last=False
     )
 
     model = GPTModel(GPT_CONFIG).to(device)
@@ -183,7 +183,7 @@ def main():
     start_time = time.time()
 
     trainer.train(
-        num_epochs=1,
+        num_epochs=5,
         eval_freq=5,
         eval_iter=2,
         start_context="Every effort moves you"
