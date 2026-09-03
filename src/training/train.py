@@ -2,17 +2,17 @@ import time
 
 import torch
 
-from config import GPT_CONFIG
-from dataloader import create_dataloader
-from generate import (generate, text_to_token_ids,token_ids_to_text)
-from gpt_model import GPTModel
-from loss import GPTLoss
-from tokenizer import GPTTokenizer
+from src.config import GPT_CONFIG
+from src.data.dataloader import create_dataloader
+from src.data.tokenizer import GPTTokenizer
+from src.inference.generate import generate, text_to_token_ids, token_ids_to_text
+from src.model.gpt_model import GPTModel
+from src.training.loss import GPTLoss
 
 
 class Trainer:
 
-    def __init__(self,model,train_loader,val_loader,optimizer,device,tokenizer):
+    def __init__(self, model, train_loader, val_loader, optimizer, device, tokenizer):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -27,7 +27,6 @@ class Trainer:
         self.tokens_seen = []
         self.global_step = 0
 
-
     def calc_loss_batch(self, input_batch, target_batch):
         input_batch = input_batch.to(self.device)
         target_batch = target_batch.to(self.device)
@@ -35,7 +34,6 @@ class Trainer:
         logits = self.model(input_batch)
 
         return self.loss_fn(logits, target_batch)
-
 
     def calc_loss_loader(self, data_loader, num_batches=None):
         if len(data_loader) == 0:
@@ -104,7 +102,7 @@ class Trainer:
 
         self.model.train()
 
-    def train(self,num_epochs,eval_freq,eval_iter,start_context):
+    def train(self, num_epochs, eval_freq, eval_iter, start_context):
         tokens_seen = 0
 
         for epoch in range(num_epochs):
@@ -150,11 +148,21 @@ def main():
 
     tokenizer = GPTTokenizer()
 
-    with open("../data/the-verdict.txt", "r", encoding="utf-8") as f:
+    with open("data/the-verdict.txt", "r", encoding="utf-8") as f:
         text = f.read()
 
-    train_loader = create_dataloader(text,tokenizer=tokenizer,batch_size=4,max_length=256,stride=128)
-    val_loader = create_dataloader(text,tokenizer=tokenizer,batch_size=4,max_length=256,stride=128,shuffle=False)
+    # Split text into train (90%) and val (10%)
+    split_idx = int(len(text) * 0.9)
+    train_text = text[:split_idx]
+    val_text = text[split_idx:]
+
+    train_loader = create_dataloader(
+        train_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128
+    )
+    val_loader = create_dataloader(
+        val_text, tokenizer=tokenizer, batch_size=4, max_length=256, stride=128, shuffle=False
+    )
+
     model = GPTModel(GPT_CONFIG).to(device)
 
     optimizer = torch.optim.AdamW(
@@ -163,12 +171,21 @@ def main():
         weight_decay=0.1
     )
 
-    trainer = Trainer(model=model,train_loader=train_loader,val_loader=val_loader,
-        optimizer=optimizer,device=device,tokenizer=tokenizer)
+    trainer = Trainer(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        optimizer=optimizer,
+        device=device,
+        tokenizer=tokenizer
+    )
 
     start_time = time.time()
 
-    trainer.train(num_epochs=1,eval_freq=5,eval_iter=2,
+    trainer.train(
+        num_epochs=1,
+        eval_freq=5,
+        eval_iter=2,
         start_context="Every effort moves you"
     )
 

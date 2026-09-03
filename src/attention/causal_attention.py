@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
+
 class CausalAttention(nn.Module):
-    def __init__(self,d_in,d_out,context_len,dropout,qkv_bias=False):
+    def __init__(self, d_in, d_out, context_len, dropout, qkv_bias=False):
         super().__init__()
         self.W_q = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_k = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -11,17 +12,17 @@ class CausalAttention(nn.Module):
 
         self.register_buffer(
             'mask',
-            torch.triu(torch.ones(context_len, context_len),diagonal=1)
+            torch.triu(torch.ones(context_len, context_len), diagonal=1)
         )
 
-    def forward(self,x):
+    def forward(self, x):
         b, num_tokens, d_in = x.shape
 
         queries = self.W_q(x)
         keys = self.W_k(x)
         values = self.W_v(x)
 
-        attn_scores = queries @ keys.transpose(1,2)
+        attn_scores = queries @ keys.transpose(1, 2)
 
         attn_scores.masked_fill_(
             self.mask.bool()[:num_tokens, :num_tokens],

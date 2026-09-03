@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+
 class GPTLoss:
     def __call__(self, logits, targets):
         logits = logits.flatten(0, 1)

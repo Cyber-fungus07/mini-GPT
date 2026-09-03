@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 
-from multihead_attention import MultiHeadAttention
+from src.attention.multihead_attention import MultiHeadAttention
+
 
 class LayerNorm(nn.Module):
     def __init__(self, emb_dim):
@@ -87,5 +88,3 @@ class TransformerBlock(nn.Module):
         x = x + shortcut
 
         return x
-
-
