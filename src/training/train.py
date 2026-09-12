@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import torch
 
@@ -12,13 +13,15 @@ from src.training.loss import GPTLoss
 
 class Trainer:
 
-    def __init__(self, model, train_loader, val_loader, optimizer, device, tokenizer):
+    def __init__(self, model, train_loader, val_loader, optimizer, device, tokenizer,
+                 checkpoint_dir="checkpoints"):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.device = device
         self.tokenizer = tokenizer
+        self.checkpoint_dir = Path(checkpoint_dir)
 
         self.loss_fn = GPTLoss()
 
@@ -73,6 +76,43 @@ class Trainer:
 
         return train_loss, val_loss
 
+    def save_checkpoint(self, epoch, tokens_seen_count, filename="last.pt"):
+
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        path = self.checkpoint_dir / filename
+
+        torch.save(
+            {
+                "epoch": epoch,
+                "global_step": self.global_step,
+                "tokens_seen_count": tokens_seen_count,
+                "model_state": self.model.state_dict(),
+                "optimizer_state": self.optimizer.state_dict(),
+                "train_losses": self.train_losses,
+                "val_losses": self.val_losses,
+                "tokens_seen": self.tokens_seen,
+                "config": GPT_CONFIG,
+            },
+            path,
+        )
+        return path
+
+    def load_checkpoint(self, path, load_optimizer=True):
+
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(checkpoint["model_state"])
+
+        if load_optimizer and "optimizer_state" in checkpoint:
+            self.optimizer.load_state_dict(checkpoint["optimizer_state"])
+
+        self.global_step = checkpoint.get("global_step", 0)
+        self.train_losses = checkpoint.get("train_losses", [])
+        self.val_losses = checkpoint.get("val_losses", [])
+        self.tokens_seen = checkpoint.get("tokens_seen", [])
+
+        return checkpoint.get("epoch", 0), checkpoint.get("tokens_seen_count", 0)
+
+
     def generate_sample(self, start_context):
         self.model.eval()
 
@@ -102,10 +142,11 @@ class Trainer:
 
         self.model.train()
 
-    def train(self, num_epochs, eval_freq, eval_iter, start_context):
-        tokens_seen = 0
+    def train(self, num_epochs, eval_freq, eval_iter, start_context, start_epoch=0,
+              tokens_seen=0, save_best=True):
+        best_val_loss = min(self.val_losses) if self.val_losses else float("inf")
 
-        for epoch in range(num_epochs):
+        for epoch in range(start_epoch, num_epochs):
             self.model.train()
 
             for input_batch, target_batch in self.train_loader:
@@ -137,6 +178,16 @@ class Trainer:
                     )
 
             self.generate_sample(start_context)
+
+            # End-of-epoch checkpoint: always update last.pt, plus best.pt on improvement
+            current_val = self.val_losses[-1] if self.val_losses else float("nan")
+            self.save_checkpoint(epoch + 1, tokens_seen, filename="last.pt")
+
+            if save_best and current_val == current_val and current_val < best_val_loss:  # NaN-safe
+                best_val_loss = current_val
+                self.save_checkpoint(epoch + 1, tokens_seen, filename="best.pt")
+
+            print(f"Checkpoint saved (epoch {epoch + 1}, val loss {current_val:.3f})")
 
         return self.train_losses, self.val_losses, self.tokens_seen
 
@@ -182,8 +233,17 @@ def main():
         val_loader=val_loader,
         optimizer=optimizer,
         device=device,
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
+        checkpoint_dir="checkpoints",
     )
+
+    # Resume from last checkpoint if one exists
+    start_epoch, tokens_seen = 0, 0
+    resume_path = Path("checkpoints/last.pt")
+
+    if resume_path.exists():
+        start_epoch, tokens_seen = trainer.load_checkpoint(resume_path)
+        print(f"Resumed from {resume_path} (epoch {start_epoch}, step {trainer.global_step})")
 
     start_time = time.time()
 
@@ -191,7 +251,9 @@ def main():
         num_epochs=5,
         eval_freq=5,
         eval_iter=2,
-        start_context="Every effort moves you"
+        start_context="Every effort moves you",
+        start_epoch=start_epoch,
+        tokens_seen=tokens_seen,
     )
 
     execution_time = (time.time() - start_time) / 60

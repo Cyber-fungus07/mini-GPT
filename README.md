@@ -79,5 +79,5 @@ Training logs loss every 5 steps and generates a sample after each epoch:
 | Model architecture | ✅ Complete |
 | Training pipeline | ✅ Complete |
 | Text generation | ✅ Complete |
-| Checkpointing | 🔲 Planned |
+| Checkpointing | ✅ Complete |
 | Pre-trained GPT-2 weight loading | 🔲 Planned |
