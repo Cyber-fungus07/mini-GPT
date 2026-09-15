@@ -70,6 +70,15 @@ python main.py
 
 Training logs loss every 5 steps and generates a sample after each epoch:
 
+```python
+from src.model.gpt_model import GPTModel
+from src.model.load_weights import load_gpt2_weights, gpt2_config
+
+model = GPTModel(gpt2_config("gpt2"))  # qkv_bias=True, as GPT-2 uses
+load_gpt2_weights(model, "gpt2")
+model.eval()
+```
+
 ---
 
 ## Status
@@ -80,4 +89,13 @@ Training logs loss every 5 steps and generates a sample after each epoch:
 | Training pipeline | ✅ Complete |
 | Text generation | ✅ Complete |
 | Checkpointing | ✅ Complete |
-| Pre-trained GPT-2 weight loading | 🔲 Planned |
+| Pre-trained GPT-2 weight loading | ✅ Complete (`src/model/load_weights.py`) |
+| Publish model to Hugging Face Hub | 🔲 Next |
+| Gradio web app for inference | 🔲 Next |
+
+---
+
+## Next Steps
+
+1. **Publish to Hugging Face Hub** — export trained `checkpoints/best.pt` + tokenizer to `transformers` format and `push_to_hub`.
+2. **Gradio web app** — wrap `src/inference/generate.py` in a `app.py` chat UI (temperature + top-k sliders) for interactive demo.
